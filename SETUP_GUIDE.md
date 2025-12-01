@@ -7,10 +7,12 @@ This guide will help you set up and run the Air Pollution Prediction System on a
 Before starting, ensure you have:
 
 1. **Python 3.10 or higher** installed
+
    - Check version: `python --version` or `python3 --version`
    - Download from: https://www.python.org/downloads/
 
 2. **pip** (Python package manager) - usually comes with Python
+
    - Check: `pip --version` or `pip3 --version`
 
 3. **Modern web browser** (Chrome, Firefox, Edge, Safari)
@@ -74,6 +76,7 @@ chmod +x start.sh
 ```
 
 **You should see:**
+
 ```
 INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
 INFO:     Started reloader process
@@ -136,6 +139,7 @@ Then open: `http://localhost:8080` in your browser
 ### Issue: "python: command not found"
 
 **Solution:**
+
 - Windows: Use `py` instead of `python`
 - Mac/Linux: Use `python3` instead of `python`
 - Or install Python from https://www.python.org/downloads/
@@ -143,6 +147,7 @@ Then open: `http://localhost:8080` in your browser
 ### Issue: "pip: command not found"
 
 **Solution:**
+
 ```bash
 # Windows
 python -m pip install -r requirements.txt
@@ -154,6 +159,7 @@ python3 -m pip install -r requirements.txt
 ### Issue: "Port 8000 already in use"
 
 **Solution:**
+
 ```bash
 # Use a different port
 uvicorn main:app --reload --host 0.0.0.0 --port 8001
@@ -165,6 +171,7 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8001
 ### Issue: "Module not found" errors
 
 **Solution:**
+
 ```bash
 # Reinstall dependencies
 pip install --upgrade -r requirements.txt
@@ -176,6 +183,7 @@ pip install fastapi uvicorn httpx scikit-learn numpy pandas joblib
 ### Issue: Frontend can't connect to backend
 
 **Check:**
+
 1. Is the backend server running? (Check terminal)
 2. Is the port correct? (Default: 8000)
 3. Open `frontend/index.html` and check `API_BASE_URL` variable
@@ -184,6 +192,7 @@ pip install fastapi uvicorn httpx scikit-learn numpy pandas joblib
 ### Issue: "Connection refused" or "Failed to fetch"
 
 **Solutions:**
+
 1. Make sure backend is running on port 8000
 2. Check firewall settings
 3. Try `http://127.0.0.1:8000` instead of `localhost:8000`
@@ -235,7 +244,7 @@ python -m http.server 8080
 ## 🆘 Still Having Issues?
 
 1. **Check Python version**: `python --version` (should be 3.10+)
-2. **Check if port 8000 is free**: 
+2. **Check if port 8000 is free**:
    - Windows: `netstat -ano | findstr :8000`
    - Mac/Linux: `lsof -i :8000`
 3. **Check backend logs** for error messages
@@ -244,15 +253,14 @@ python -m http.server 8080
 
 ## 📞 Common Error Messages
 
-| Error | Solution |
-|-------|----------|
-| `ModuleNotFoundError` | Run `pip install -r requirements.txt` |
-| `Address already in use` | Change port or stop other service on port 8000 |
-| `Connection refused` | Make sure backend is running |
-| `CORS error` | Backend CORS is configured, check if backend is running |
-| `Failed to fetch` | Check API_BASE_URL in frontend/index.html |
+| Error                    | Solution                                                |
+| ------------------------ | ------------------------------------------------------- |
+| `ModuleNotFoundError`    | Run `pip install -r requirements.txt`                   |
+| `Address already in use` | Change port or stop other service on port 8000          |
+| `Connection refused`     | Make sure backend is running                            |
+| `CORS error`             | Backend CORS is configured, check if backend is running |
+| `Failed to fetch`        | Check API_BASE_URL in frontend/index.html               |
 
 ---
 
 **That's it! You should now have the application running on your new laptop! 🎉**
-
