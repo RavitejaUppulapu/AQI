@@ -492,46 +492,15 @@
         </div>
       </div>
 
-      <!-- Additional Features Section -->
-      <div
-        class="content"
-        id="additionalFeatures"
-        style="display: none; padding: 30px"
-      >
-        <!-- Compare Cities Section -->
-        <div class="feature-section" style="margin-bottom: 40px">
-          <h2 style="margin-bottom: 20px; color: #333">📊 Compare Cities</h2>
-          <div class="search-box" style="max-width: 800px; margin-bottom: 20px">
-            <input
-              type="text"
-              class="search-input"
-              id="compareCityInput"
-              placeholder="Enter city names separated by commas (e.g., Delhi, Mumbai, Bangalore)"
-            />
-            <button
-              class="search-btn"
-              onclick="compareCities()"
-              id="compareBtn"
-            >
-              Compare Cities
-            </button>
-          </div>
-          <div class="loading" id="compareLoading" style="display: none">
-            Loading comparison...
-          </div>
-          <div id="compareError" style="display: none"></div>
-          <div id="compareResults" style="display: none"></div>
-        </div>
-
-        <!-- Favorites Section -->
-        <div class="feature-section" style="margin-bottom: 40px">
+      <!-- Favorites Section - Always Visible -->
+      <div class="content" style="padding: 30px">
+        <div class="feature-section">
           <h2 style="margin-bottom: 20px; color: #333">⭐ Favorite Cities</h2>
           <div id="favoritesContent">
             <div
               id="favoritesList"
               style="
                 display: none;
-                display: grid;
                 grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
                 gap: 20px;
               "
@@ -565,9 +534,38 @@
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Analytics Section -->
-        <div class="feature-section" style="margin-bottom: 40px">
+      <!-- Compare Cities Section - Always Visible -->
+      <div class="content" style="padding: 30px">
+        <div class="feature-section">
+          <h2 style="margin-bottom: 20px; color: #333">📊 Compare Cities</h2>
+          <div class="search-box" style="max-width: 800px; margin-bottom: 20px">
+            <input
+              type="text"
+              class="search-input"
+              id="compareCityInput"
+              placeholder="Enter city names separated by commas (e.g., Delhi, Mumbai, Bangalore)"
+            />
+            <button
+              class="search-btn"
+              onclick="compareCities()"
+              id="compareBtn"
+            >
+              Compare Cities
+            </button>
+          </div>
+          <div class="loading" id="compareLoading" style="display: none">
+            Loading comparison...
+          </div>
+          <div id="compareError" style="display: none"></div>
+          <div id="compareResults" style="display: none"></div>
+        </div>
+      </div>
+
+      <!-- Analytics Section - Always Visible -->
+      <div class="content" style="padding: 30px">
+        <div class="feature-section">
           <h2 style="margin-bottom: 20px; color: #333">📉 Model Analytics</h2>
           <div class="search-box" style="max-width: 600px; margin-bottom: 20px">
             <input
@@ -975,10 +973,7 @@
           forecastHTML +
           alertsHTML;
 
-        // Show additional features section
-        document.getElementById("additionalFeatures").style.display = "block";
-
-        // Load favorites when results are shown
+        // Refresh favorites display (already visible)
         loadFavorites();
 
         // Draw charts
@@ -1359,26 +1354,73 @@
 
           if (error || !data) {
             card.className = "current-aqi aqi-moderate";
+            const viewBtn = document.createElement("button");
+            viewBtn.textContent = "View Details";
+            viewBtn.style.cssText =
+              "background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; flex: 1;";
+            viewBtn.onclick = (e) => {
+              e.stopPropagation();
+              document.getElementById("cityInput").value = city;
+              searchCity();
+              // Scroll to top to see results
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            };
+
+            const removeBtn = document.createElement("button");
+            removeBtn.textContent = "Remove";
+            removeBtn.style.cssText =
+              "background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer;";
+            removeBtn.onclick = (e) => {
+              e.stopPropagation();
+              removeFavorite(city);
+            };
+
+            const btnContainer = document.createElement("div");
+            btnContainer.style.cssText =
+              "display: flex; gap: 10px; margin-top: 15px;";
+            btnContainer.appendChild(viewBtn);
+            btnContainer.appendChild(removeBtn);
+
             card.innerHTML = `
               <h3>📍 ${city}</h3>
               <div style="margin: 15px 0; opacity: 0.8;">Unable to load data</div>
-              <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button onclick="event.stopPropagation(); document.getElementById('cityInput').value = '${city}'; searchCity();" 
-                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; flex: 1;">
-                  View Details
-                </button>
-                <button onclick="event.stopPropagation(); removeFavorite('${city}')" 
-                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer;">
-                  Remove
-                </button>
-              </div>
             `;
+            card.appendChild(btnContainer);
           } else {
             const aqiClass = getAQIClass(data.aqi);
             card.className = `current-aqi ${aqiClass}`;
-            card.onclick = () => {
-              document.getElementById("cityInput").value = city;
+
+            const viewBtn = document.createElement("button");
+            viewBtn.textContent = "View Details";
+            viewBtn.style.cssText =
+              "background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; flex: 1;";
+            viewBtn.onclick = (e) => {
+              e.stopPropagation();
+              document.getElementById("cityInput").value = data.city;
               searchCity();
+              // Scroll to top to see results
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            };
+
+            const removeBtn = document.createElement("button");
+            removeBtn.textContent = "Remove";
+            removeBtn.style.cssText =
+              "background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer;";
+            removeBtn.onclick = (e) => {
+              e.stopPropagation();
+              removeFavorite(data.city);
+            };
+
+            const btnContainer = document.createElement("div");
+            btnContainer.style.cssText =
+              "display: flex; gap: 10px; margin-top: 15px;";
+            btnContainer.appendChild(viewBtn);
+            btnContainer.appendChild(removeBtn);
+
+            card.onclick = () => {
+              document.getElementById("cityInput").value = data.city;
+              searchCity();
+              window.scrollTo({ top: 0, behavior: "smooth" });
             };
             card.innerHTML = `
               <h3>📍 ${data.city}</h3>
@@ -1388,17 +1430,8 @@
               <div style="margin: 10px 0;">${
                 data.health_message || getHealthMessage(data.aqi)
               }</div>
-              <div style="display: flex; gap: 10px; margin-top: 15px;">
-                <button onclick="event.stopPropagation(); document.getElementById('cityInput').value = '${city}'; searchCity();" 
-                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; flex: 1;">
-                  View Details
-                </button>
-                <button onclick="event.stopPropagation(); removeFavorite('${city}')" 
-                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer;">
-                  Remove
-                </button>
-              </div>
             `;
+            card.appendChild(btnContainer);
           }
           list.appendChild(card);
         });
