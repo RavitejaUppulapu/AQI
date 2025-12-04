@@ -264,6 +264,52 @@
         background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
       }
 
+      .alerts-section {
+        margin-top: 30px;
+        padding: 25px 30px;
+        background: #f8f9fa;
+        border-radius: 15px;
+      }
+
+      .alerts-section h2 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .alerts-list {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+        gap: 12px;
+      }
+
+      .alert-card {
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-size: 0.95rem;
+        background: #ffffff;
+        border-left: 4px solid #4caf50;
+      }
+
+      .alert-card.warning {
+        border-left-color: #f5b041;
+      }
+
+      .alert-card.critical {
+        border-left-color: #e74c3c;
+      }
+
+      .alert-type {
+        font-size: 0.8rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        opacity: 0.8;
+      }
+
+      .alert-message {
+        margin-top: 4px;
+      }
+
       .legend-section {
         padding: 25px 30px 35px;
         background: #f8f9fa;
@@ -433,6 +479,7 @@
     <script>
       const API_BASE_URL = "http://localhost:8000";
       let chartInstance = null;
+      let forecastChartInstance = null;
 
       async function searchCity() {
         const cityInput = document.getElementById("cityInput");
@@ -455,7 +502,7 @@
         searchBtn.disabled = true;
 
         try {
-          // Fetch current AQI, history, and prediction in parallel
+          // Fetch main data in parallel
           const [currentData, historyData, predictionData] = await Promise.all([
             fetch(
               `${API_BASE_URL}/current?city=${encodeURIComponent(city)}`
@@ -468,7 +515,7 @@
             ).then((r) => r.json()),
           ]);
 
-          // Check for errors
+          // Check for core API errors
           if (
             currentData.detail ||
             historyData.detail ||
@@ -480,8 +527,34 @@
             return;
           }
 
-          // Display results
-          displayResults(currentData, historyData, predictionData);
+          // Fetch optional advanced data: forecast and alerts (do not block main UI)
+          let forecastData = null;
+          let alertsData = null;
+          try {
+            const [forecastRes, alertsRes] = await Promise.all([
+              fetch(
+                `${API_BASE_URL}/forecast?city=${encodeURIComponent(
+                  city
+                )}&days=5`
+              ).then((r) => r.json()),
+              fetch(
+                `${API_BASE_URL}/alerts?city=${encodeURIComponent(city)}`
+              ).then((r) => r.json()),
+            ]);
+            forecastData = !forecastRes.detail ? forecastRes : null;
+            alertsData = !alertsRes.detail ? alertsRes : null;
+          } catch (advErr) {
+            console.warn("Advanced data fetch failed:", advErr);
+          }
+
+          // Display results (forecast/alerts may be null)
+          displayResults(
+            currentData,
+            historyData,
+            predictionData,
+            forecastData,
+            alertsData
+          );
         } catch (err) {
           console.error("Error:", err);
           showError(
@@ -522,7 +595,7 @@
         return Math.round(num);
       }
 
-      function displayResults(current, history, prediction) {
+      function displayResults(current, history, prediction, forecast, alerts) {
         const results = document.getElementById("results");
         results.style.display = "block";
 
@@ -634,6 +707,10 @@
           : "N/A";
         const mae = metrics.mae ? metrics.mae.toFixed(2) : "N/A";
 
+        const modelName =
+          (prediction.model_metrics && prediction.model_metrics.model_name) ||
+          "";
+
         const predictionHTML = `
                 <div class="prediction-section ${predAqiClass}">
                     <h2>🔮 Predicted AQI for Tomorrow</h2>
@@ -671,17 +748,83 @@
                         `
                             : ""
                         }
+                        ${
+                          modelName
+                            ? `
+                        <div style="background: rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 10px;">
+                            <div style="font-size: 0.9rem; opacity: 0.9;">Model</div>
+                            <div style="font-size: 1.1rem; font-weight: 600; text-transform: capitalize;">${modelName.replace(
+                              "_",
+                              " "
+                            )}</div>
+                        </div>
+                        `
+                            : ""
+                        }
                     </div>
                     `
                         : ""
                     }
                 </div>
             `;
+        let forecastHTML = "";
+        if (
+          forecast &&
+          Array.isArray(forecast.forecast) &&
+          forecast.forecast.length
+        ) {
+          forecastHTML = `
+                <div class="chart-section">
+                    <h2>📈 AQI Forecast (Next ${forecast.forecast.length} days)</h2>
+                    <div class="chart-container">
+                        <canvas id="forecastChart"></canvas>
+                    </div>
+                </div>
+            `;
+        }
 
-        results.innerHTML = currentHTML + historyHTML + predictionHTML;
+        let alertsHTML = "";
+        if (alerts && Array.isArray(alerts.alerts)) {
+          const items = alerts.alerts
+            .map(
+              (a) => `
+                <div class="alert-card ${a.level}">
+                    <div class="alert-type">${a.type.toUpperCase()} • ${a.level.toUpperCase()}</div>
+                    <div class="alert-message">${a.message}</div>
+                </div>
+            `
+            )
+            .join("");
 
-        // Draw chart
+          alertsHTML = `
+                <div class="alerts-section">
+                    <h2>⚠️ Air Quality Alerts</h2>
+                    <div class="alerts-list">
+                        ${
+                          items ||
+                          '<div style="opacity:0.8;font-size:0.95rem;">No alerts for this city right now.</div>'
+                        }
+                    </div>
+                </div>
+            `;
+        }
+
+        results.innerHTML =
+          currentHTML +
+          historyHTML +
+          predictionHTML +
+          forecastHTML +
+          alertsHTML;
+
+        // Draw charts
         drawChart(history.history || []);
+        if (
+          forecast &&
+          Array.isArray(forecast.forecast) &&
+          forecast.forecast.length
+        ) {
+          drawForecastChart(forecast.forecast);
+        }
       }
 
       function drawChart(historyData) {
@@ -718,6 +861,78 @@
                 pointRadius: 5,
                 pointHoverRadius: 7,
                 pointBackgroundColor: "#667eea",
+                pointBorderColor: "#fff",
+                pointBorderWidth: 2,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                display: true,
+                position: "top",
+              },
+              tooltip: {
+                mode: "index",
+                intersect: false,
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: true,
+                title: {
+                  display: true,
+                  text: "AQI Value",
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Date",
+                },
+              },
+            },
+          },
+        });
+      }
+
+      function drawForecastChart(forecastData) {
+        const canvas = document.getElementById("forecastChart");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+
+        if (forecastChartInstance) {
+          forecastChartInstance.destroy();
+        }
+
+        const labels = forecastData.map((item) => {
+          const date = new Date(item.day);
+          return date.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+        });
+
+        const values = forecastData.map((item) => item.predicted_aqi);
+
+        forecastChartInstance = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels,
+            datasets: [
+              {
+                label: "Predicted AQI",
+                data: values,
+                borderColor: "#4facfe",
+                backgroundColor: "rgba(79, 172, 254, 0.12)",
+                borderWidth: 3,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                pointBackgroundColor: "#4facfe",
                 pointBorderColor: "#fff",
                 pointBorderWidth: 2,
               },
