@@ -13,6 +13,8 @@ class Settings:
         "70fa7c8239bbf05b4090b6992f04d1047fc96267"
     )
     AQICN_BASE_URL: str = "https://api.waqi.info/feed/{city}/?token={token}"
+    # OpenWeather API (fallback)
+    OPENWEATHER_API_KEY: str = os.getenv("OPENWEATHER_API_KEY", "")
     
     # Cache Configuration
     CACHE_TTL: int = int(os.getenv("CACHE_TTL", "300"))  # 5 minutes

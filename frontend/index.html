@@ -17,12 +17,13 @@
           Oxygen, Ubuntu, Cantarell, sans-serif;
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         min-height: 100vh;
-        padding: 20px;
+        padding: 0;
+        margin: 0;
       }
 
       .container {
         max-width: 1200px;
-        margin: 0 auto;
+        margin: 20px auto;
         background: white;
         border-radius: 20px;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
@@ -350,6 +351,22 @@
         color: #555;
       }
 
+      .feature-section {
+        background: white;
+        padding: 25px 30px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+      }
+
+      .feature-section h2 {
+        font-size: 1.5rem;
+        margin-bottom: 20px;
+        color: #333;
+        border-bottom: 2px solid #667eea;
+        padding-bottom: 10px;
+      }
+
       @media (max-width: 768px) {
         .header h1 {
           font-size: 1.8rem;
@@ -474,10 +491,131 @@
           </div>
         </div>
       </div>
+
+      <!-- Additional Features Section -->
+      <div
+        class="content"
+        id="additionalFeatures"
+        style="display: none; padding: 30px"
+      >
+        <!-- Compare Cities Section -->
+        <div class="feature-section" style="margin-bottom: 40px">
+          <h2 style="margin-bottom: 20px; color: #333">📊 Compare Cities</h2>
+          <div class="search-box" style="max-width: 800px; margin-bottom: 20px">
+            <input
+              type="text"
+              class="search-input"
+              id="compareCityInput"
+              placeholder="Enter city names separated by commas (e.g., Delhi, Mumbai, Bangalore)"
+            />
+            <button
+              class="search-btn"
+              onclick="compareCities()"
+              id="compareBtn"
+            >
+              Compare Cities
+            </button>
+          </div>
+          <div class="loading" id="compareLoading" style="display: none">
+            Loading comparison...
+          </div>
+          <div id="compareError" style="display: none"></div>
+          <div id="compareResults" style="display: none"></div>
+        </div>
+
+        <!-- Favorites Section -->
+        <div class="feature-section" style="margin-bottom: 40px">
+          <h2 style="margin-bottom: 20px; color: #333">⭐ Favorite Cities</h2>
+          <div id="favoritesContent">
+            <div
+              id="favoritesList"
+              style="
+                display: none;
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                gap: 20px;
+              "
+            ></div>
+            <div
+              id="noFavorites"
+              style="
+                text-align: center;
+                padding: 40px;
+                color: #666;
+                background: #f8f9fa;
+                border-radius: 15px;
+                display: block;
+              "
+            >
+              <div style="font-size: 3rem; margin-bottom: 20px">⭐</div>
+              <p
+                style="
+                  font-size: 1.2rem;
+                  margin-bottom: 15px;
+                  font-weight: 600;
+                  color: #333;
+                "
+              >
+                No favorite cities yet
+              </p>
+              <p style="font-size: 0.95rem; color: #666; line-height: 1.6">
+                Search for cities above and click the ⭐ icon to add them to
+                favorites
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analytics Section -->
+        <div class="feature-section" style="margin-bottom: 40px">
+          <h2 style="margin-bottom: 20px; color: #333">📉 Model Analytics</h2>
+          <div class="search-box" style="max-width: 600px; margin-bottom: 20px">
+            <input
+              type="text"
+              class="search-input"
+              id="analyticsCityInput"
+              placeholder="Enter city name for analytics"
+            />
+            <button
+              class="search-btn"
+              onclick="loadAnalytics()"
+              id="analyticsBtn"
+            >
+              View Analytics
+            </button>
+          </div>
+          <div class="loading" id="analyticsLoading" style="display: none">
+            Loading analytics...
+          </div>
+          <div id="analyticsError" style="display: none"></div>
+          <div id="analyticsResults" style="display: none"></div>
+        </div>
+      </div>
     </div>
 
     <script>
-      const API_BASE_URL = "http://localhost:8000";
+      // Dynamic API URL detection
+      const API_BASE_URL = (() => {
+        // If opened via file:// protocol, default to localhost
+        if (window.location.protocol === "file:") {
+          return "http://localhost:8000";
+        }
+        // Local development
+        if (
+          window.location.hostname === "localhost" ||
+          window.location.hostname === "127.0.0.1"
+        ) {
+          return "http://localhost:8000";
+        }
+        // For production, try to detect backend URL
+        const backendUrl =
+          window.ENV?.API_BASE_URL ||
+          window.location.origin.replace(/\/$/, "") ||
+          "https://your-backend-service.onrender.com";
+        return backendUrl;
+      })();
+
+      console.log("API Base URL:", API_BASE_URL);
       let chartInstance = null;
       let forecastChartInstance = null;
 
@@ -523,7 +661,16 @@
           ) {
             const errorMsg =
               currentData.detail || historyData.detail || predictionData.detail;
-            showError(errorMsg);
+            // Enhanced error message with suggestions
+            let enhancedError = errorMsg;
+            if (
+              errorMsg.includes("Could not fetch") ||
+              errorMsg.includes("not found")
+            ) {
+              enhancedError +=
+                '<br><br><strong>💡 Suggestions:</strong><ul style="margin-top: 10px; padding-left: 20px;"><li>Try using the full city name (e.g., "New York" instead of "NYC")</li><li>Check spelling and try alternative names</li><li>Some smaller cities may not have data available</li><li>Try nearby major cities</li></ul>';
+            }
+            showError(enhancedError);
             return;
           }
 
@@ -570,7 +717,7 @@
         const error = document.getElementById("error");
         error.style.display = "block";
         error.className = "error";
-        error.textContent = message;
+        error.innerHTML = message; // Use innerHTML to support HTML suggestions
       }
 
       function getAQIClass(aqi) {
@@ -616,9 +763,21 @@
             : "";
         const displayWind =
           current.wind != null ? `${formatNumber(current.wind, 1)} m/s` : "";
+        // Check if city is in favorites
+        const favorites = JSON.parse(
+          localStorage.getItem("favoriteCities") || "[]"
+        );
+        const isFavorite = favorites.includes(current.city);
+        const favoriteBtn = isFavorite
+          ? `<button onclick="removeFavorite('${current.city}'); location.reload();" style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; margin-left: 10px;">⭐ Remove Favorite</button>`
+          : `<button onclick="addFavorite('${current.city}'); location.reload();" style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; margin-left: 10px;">⭐ Add to Favorites</button>`;
+
         const currentHTML = `
                 <div class="current-aqi ${aqiClass}">
-                    <h2>📍 ${current.city}</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                      <h2>📍 ${current.city}</h2>
+                      ${favoriteBtn}
+                    </div>
                     <div class="aqi-value">${current.aqi}</div>
                     <div class="health-message">${
                       current.health_message || getHealthMessage(current.aqi)
@@ -816,6 +975,12 @@
           forecastHTML +
           alertsHTML;
 
+        // Show additional features section
+        document.getElementById("additionalFeatures").style.display = "block";
+
+        // Load favorites when results are shown
+        loadFavorites();
+
         // Draw charts
         drawChart(history.history || []);
         if (
@@ -977,6 +1142,368 @@
         if (aqi <= 200) return "Unhealthy";
         if (aqi <= 300) return "Very Unhealthy";
         return "Hazardous";
+      }
+
+      // Test backend connection
+      async function testBackendConnection() {
+        try {
+          const response = await fetch(`${API_BASE_URL}/health`);
+          if (response.ok) {
+            const data = await response.json();
+            console.log("✅ Backend is running:", data);
+            return true;
+          } else {
+            console.error("❌ Backend health check failed:", response.status);
+            return false;
+          }
+        } catch (err) {
+          console.error("❌ Backend connection failed:", err);
+          return false;
+        }
+      }
+
+      // Initialize on load
+      document.addEventListener("DOMContentLoaded", () => {
+        console.log("🚀 App initialized. API Base URL:", API_BASE_URL);
+
+        // Make functions globally available
+        window.searchCity = searchCity;
+        window.addFavorite = addFavorite;
+        window.removeFavorite = removeFavorite;
+        window.compareCities = compareCities;
+        window.loadAnalytics = loadAnalytics;
+        window.loadFavorites = loadFavorites;
+
+        // Load favorites on page load
+        loadFavorites();
+
+        testBackendConnection().then((isConnected) => {
+          if (!isConnected) {
+            console.warn(
+              "⚠️ Backend not connected. Some features may not work."
+            );
+            console.warn(
+              "💡 Make sure backend is running: cd backend && uvicorn main:app --reload --host 0.0.0.0 --port 8000"
+            );
+          }
+        });
+      });
+
+      // Favorite functions (used in home page)
+      function addFavorite(city) {
+        const favorites = JSON.parse(
+          localStorage.getItem("favoriteCities") || "[]"
+        );
+        if (!favorites.includes(city)) {
+          favorites.push(city);
+          localStorage.setItem("favoriteCities", JSON.stringify(favorites));
+          console.log("⭐ Added to favorites:", city);
+          loadFavorites(); // Refresh favorites display
+        }
+      }
+
+      function removeFavorite(city) {
+        const favorites = JSON.parse(
+          localStorage.getItem("favoriteCities") || "[]"
+        );
+        const updated = favorites.filter((c) => c !== city);
+        localStorage.setItem("favoriteCities", JSON.stringify(updated));
+        console.log("🗑️ Removed from favorites:", city);
+        loadFavorites(); // Refresh favorites display
+        // Reload page to update favorite button in current results
+        location.reload();
+      }
+
+      // Compare Cities function
+      async function compareCities() {
+        const input = document.getElementById("compareCityInput");
+        const btn = document.getElementById("compareBtn");
+        const loading = document.getElementById("compareLoading");
+        const error = document.getElementById("compareError");
+        const results = document.getElementById("compareResults");
+
+        const citiesStr = input.value.trim();
+        if (!citiesStr) {
+          showCompareError("Please enter at least one city name");
+          return;
+        }
+
+        const cities = citiesStr
+          .split(",")
+          .map((c) => c.trim())
+          .filter((c) => c);
+        if (cities.length === 0) {
+          showCompareError("Please enter valid city names");
+          return;
+        }
+
+        loading.style.display = "block";
+        error.style.display = "none";
+        results.style.display = "none";
+        btn.disabled = true;
+
+        try {
+          const response = await fetch(`${API_BASE_URL}/compare`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ cities }),
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({
+              detail: `HTTP ${response.status}: ${response.statusText}`,
+            }));
+            showCompareError(
+              errorData.detail || `Failed to fetch data: ${response.statusText}`
+            );
+            return;
+          }
+
+          const data = await response.json();
+          if (data.detail) {
+            showCompareError(data.detail);
+            return;
+          }
+
+          const comparisons = data.comparisons || [];
+          if (comparisons.length === 0) {
+            showCompareError("No data available for the selected cities");
+            return;
+          }
+
+          let html =
+            '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 20px;">';
+          comparisons.forEach((city) => {
+            const aqiClass = getAQIClass(city.current_aqi);
+            html += `
+              <div class="current-aqi ${aqiClass}" style="margin: 0;">
+                <h3>📍 ${city.city}</h3>
+                <div style="font-size: 2.5rem; font-weight: bold; margin: 15px 0;">${
+                  city.current_aqi
+                }</div>
+                <div style="margin: 10px 0;">Current: ${getHealthMessage(
+                  city.current_aqi
+                )}</div>
+                <div style="margin: 10px 0;">Predicted: ${city.predicted_aqi.toFixed(
+                  1
+                )} (${city.health_message})</div>
+              </div>
+            `;
+          });
+          html += "</div>";
+
+          results.innerHTML = html;
+          results.style.display = "block";
+        } catch (err) {
+          console.error("Compare cities error:", err);
+          showCompareError(`Failed to compare cities: ${err.message}`);
+        } finally {
+          loading.style.display = "none";
+          btn.disabled = false;
+        }
+      }
+
+      function showCompareError(message) {
+        const error = document.getElementById("compareError");
+        error.style.display = "block";
+        error.className = "error";
+        error.innerHTML = message;
+      }
+
+      // Load Favorites function
+      async function loadFavorites() {
+        const favorites = JSON.parse(
+          localStorage.getItem("favoriteCities") || "[]"
+        );
+        const list = document.getElementById("favoritesList");
+        const noFavorites = document.getElementById("noFavorites");
+
+        if (favorites.length === 0) {
+          list.style.display = "none";
+          noFavorites.style.display = "block";
+          return;
+        }
+
+        list.style.display = "grid";
+        noFavorites.style.display = "none";
+        list.innerHTML =
+          '<div style="grid-column: 1/-1; text-align: center; padding: 20px; color: #666;">Loading favorite cities...</div>';
+
+        // Fetch data for all favorites in parallel
+        const cityPromises = favorites.map(async (city) => {
+          try {
+            const response = await fetch(
+              `${API_BASE_URL}/current?city=${encodeURIComponent(city)}`
+            );
+            if (!response.ok) {
+              return { city, error: true, data: null };
+            }
+            const data = await response.json();
+            if (data.detail) {
+              return { city, error: true, data: null };
+            }
+            return { city, error: false, data };
+          } catch (err) {
+            console.error(`Error fetching ${city}:`, err);
+            return { city, error: true, data: null };
+          }
+        });
+
+        const results = await Promise.all(cityPromises);
+        list.innerHTML = "";
+
+        results.forEach(({ city, error, data }) => {
+          const card = document.createElement("div");
+          card.style.cursor = "pointer";
+          card.style.position = "relative";
+
+          if (error || !data) {
+            card.className = "current-aqi aqi-moderate";
+            card.innerHTML = `
+              <h3>📍 ${city}</h3>
+              <div style="margin: 15px 0; opacity: 0.8;">Unable to load data</div>
+              <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="event.stopPropagation(); document.getElementById('cityInput').value = '${city}'; searchCity();" 
+                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; flex: 1;">
+                  View Details
+                </button>
+                <button onclick="event.stopPropagation(); removeFavorite('${city}')" 
+                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer;">
+                  Remove
+                </button>
+              </div>
+            `;
+          } else {
+            const aqiClass = getAQIClass(data.aqi);
+            card.className = `current-aqi ${aqiClass}`;
+            card.onclick = () => {
+              document.getElementById("cityInput").value = city;
+              searchCity();
+            };
+            card.innerHTML = `
+              <h3>📍 ${data.city}</h3>
+              <div style="font-size: 2.5rem; font-weight: bold; margin: 15px 0;">${
+                data.aqi
+              }</div>
+              <div style="margin: 10px 0;">${
+                data.health_message || getHealthMessage(data.aqi)
+              }</div>
+              <div style="display: flex; gap: 10px; margin-top: 15px;">
+                <button onclick="event.stopPropagation(); document.getElementById('cityInput').value = '${city}'; searchCity();" 
+                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer; flex: 1;">
+                  View Details
+                </button>
+                <button onclick="event.stopPropagation(); removeFavorite('${city}')" 
+                        style="background: rgba(255,255,255,0.3); border: none; color: white; padding: 8px 15px; border-radius: 8px; cursor: pointer;">
+                  Remove
+                </button>
+              </div>
+            `;
+          }
+          list.appendChild(card);
+        });
+      }
+
+      // Analytics function
+      async function loadAnalytics() {
+        const input = document.getElementById("analyticsCityInput");
+        const btn = document.getElementById("analyticsBtn");
+        const loading = document.getElementById("analyticsLoading");
+        const error = document.getElementById("analyticsError");
+        const results = document.getElementById("analyticsResults");
+
+        const city = input.value.trim();
+        if (!city) {
+          showAnalyticsError("Please enter a city name");
+          return;
+        }
+
+        loading.style.display = "block";
+        error.style.display = "none";
+        results.style.display = "none";
+        btn.disabled = true;
+
+        try {
+          const response = await fetch(
+            `${API_BASE_URL}/model/backtest?city=${encodeURIComponent(city)}`
+          );
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({
+              detail: `HTTP ${response.status}: ${response.statusText}`,
+            }));
+            showAnalyticsError(
+              errorData.detail ||
+                `Failed to fetch analytics: ${response.statusText}`
+            );
+            return;
+          }
+
+          const data = await response.json();
+          if (data.detail) {
+            showAnalyticsError(data.detail);
+            return;
+          }
+
+          const metrics = data.metrics || {};
+          let html = `
+            <div class="chart-section">
+              <h2>📉 Model Performance for ${data.city}</h2>
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 20px;">
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; text-align: center;">
+                  <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">R² Score</div>
+                  <div style="font-size: 2.5rem; font-weight: bold; color: #667eea;">${(
+                    metrics.r2_score * 100
+                  ).toFixed(1)}%</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; text-align: center;">
+                  <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">Mean Absolute Error</div>
+                  <div style="font-size: 2.5rem; font-weight: bold; color: #667eea;">${metrics.mae.toFixed(
+                    2
+                  )}</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; text-align: center;">
+                  <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">RMSE</div>
+                  <div style="font-size: 2.5rem; font-weight: bold; color: #667eea;">${metrics.rmse.toFixed(
+                    2
+                  )}</div>
+                </div>
+                <div style="background: #f8f9fa; padding: 25px; border-radius: 15px; text-align: center;">
+                  <div style="font-size: 0.9rem; color: #666; margin-bottom: 10px;">Samples</div>
+                  <div style="font-size: 2.5rem; font-weight: bold; color: #667eea;">${
+                    metrics.samples
+                  }</div>
+                </div>
+              </div>
+              <div style="margin-top: 30px; padding: 20px; background: #f8f9fa; border-radius: 15px;">
+                <h3 style="margin-bottom: 15px;">Trend Analysis</h3>
+                <p><strong>Trend:</strong> ${data.trend}</p>
+                <p><strong>Change:</strong> ${data.trend_change_percent.toFixed(
+                  2
+                )}%</p>
+                <p><strong>Volatility:</strong> ${data.volatility.toFixed(
+                  2
+                )}</p>
+              </div>
+            </div>
+          `;
+
+          results.innerHTML = html;
+          results.style.display = "block";
+        } catch (err) {
+          console.error("Analytics error:", err);
+          showAnalyticsError(`Failed to load analytics: ${err.message}`);
+        } finally {
+          loading.style.display = "none";
+          btn.disabled = false;
+        }
+      }
+
+      function showAnalyticsError(message) {
+        const error = document.getElementById("analyticsError");
+        error.style.display = "block";
+        error.className = "error";
+        error.innerHTML = message;
       }
     </script>
   </body>
