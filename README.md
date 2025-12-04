@@ -25,7 +25,6 @@ air_quality_project/
 │       └── train.py         # Model training script
 ├── frontend/
 │   └── index.html           # Web UI
-├── Dockerfile               # Docker configuration
 └── README.md                # This file
 ```
 
@@ -36,7 +35,6 @@ air_quality_project/
 - Python 3.10 or higher
 - pip (Python package manager)
 - Modern web browser
-- Docker (optional, for containerized deployment)
 
 ### Installation & Setup
 
@@ -75,19 +73,6 @@ air_quality_project/
 
      # Then open http://localhost:8080 in your browser
      ```
-
-#### Option 2: Docker Compose
-
-```bash
-# Start all services
-docker-compose up -d
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
-```
 
 5. **Test the API**
 
@@ -281,22 +266,6 @@ cd backend
 python ml/train.py
 ```
 
-## 🐳 Docker Deployment
-
-### Build Docker Image
-
-```bash
-docker build -t air-pollution-api .
-```
-
-### Run Docker Container
-
-```bash
-docker run -p 8000:8000 air-pollution-api
-```
-
-The API will be available at `http://localhost:8000`
-
 ## 🎨 Frontend
 
 The frontend is a single-page application built with:
@@ -426,10 +395,7 @@ backend/
 - ✅ **Logging**: Structured logging for debugging and monitoring
 - ✅ **Pydantic Models**: Request/response validation with automatic documentation
 - ✅ **Frontend Enhancements**: Confidence scores display, model metrics, loading animations
-- ✅ **Docker Support**: Docker Compose for easy deployment
 - ✅ **Configuration**: Environment-based configuration management
-
-See [IMPROVEMENTS.md](IMPROVEMENTS.md) for detailed changelog.
 
 ## 🔒 Security Features
 
