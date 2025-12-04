@@ -188,8 +188,11 @@
       }
 
       .metric-value {
-        font-size: 1.8rem;
-        font-weight: bold;
+        font-size: 1.6rem;
+        font-weight: 700;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .chart-section {
@@ -261,6 +264,46 @@
         background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
       }
 
+      .legend-section {
+        padding: 25px 30px 35px;
+        background: #f8f9fa;
+        border-top: 1px solid #e0e0e0;
+      }
+
+      .legend-section h2 {
+        font-size: 1.4rem;
+        margin-bottom: 15px;
+        color: #333;
+      }
+
+      .legend-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+        gap: 12px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.95rem;
+      }
+
+      .legend-color {
+        width: 18px;
+        height: 18px;
+        border-radius: 6px;
+      }
+
+      .legend-label {
+        font-weight: 600;
+      }
+
+      .legend-range {
+        font-size: 0.85rem;
+        color: #555;
+      }
+
       @media (max-width: 768px) {
         .header h1 {
           font-size: 1.8rem;
@@ -306,6 +349,84 @@
         <div class="loading" id="loading" style="display: none">Loading...</div>
         <div id="error" style="display: none"></div>
         <div id="results" style="display: none"></div>
+
+        <div class="legend-section">
+          <h2>AQI Categories</h2>
+          <div class="legend-grid">
+            <div class="legend-item">
+              <div
+                class="legend-color"
+                style="
+                  background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%);
+                "
+              ></div>
+              <div>
+                <div class="legend-label">Good</div>
+                <div class="legend-range">0 – 50</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div
+                class="legend-color"
+                style="
+                  background: linear-gradient(135deg, #fbc531 0%, #f5b041 100%);
+                "
+              ></div>
+              <div>
+                <div class="legend-label">Moderate</div>
+                <div class="legend-range">51 – 100</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div
+                class="legend-color"
+                style="
+                  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+                "
+              ></div>
+              <div>
+                <div class="legend-label">Unhealthy for Sensitive Groups</div>
+                <div class="legend-range">101 – 150</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div
+                class="legend-color"
+                style="
+                  background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
+                "
+              ></div>
+              <div>
+                <div class="legend-label">Unhealthy</div>
+                <div class="legend-range">151 – 200</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div
+                class="legend-color"
+                style="
+                  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+                "
+              ></div>
+              <div>
+                <div class="legend-label">Very Unhealthy</div>
+                <div class="legend-range">201 – 300</div>
+              </div>
+            </div>
+            <div class="legend-item">
+              <div
+                class="legend-color"
+                style="
+                  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+                "
+              ></div>
+              <div>
+                <div class="legend-label">Hazardous</div>
+                <div class="legend-range">300+</div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -387,12 +508,41 @@
         return "aqi-hazardous";
       }
 
+      function formatNumber(value, decimals = 1, fallback = "N/A") {
+        if (value === null || value === undefined) return fallback;
+        const num = Number(value);
+        if (Number.isNaN(num)) return fallback;
+        return num.toFixed(decimals);
+      }
+
+      function formatInt(value, fallback = "N/A") {
+        if (value === null || value === undefined) return fallback;
+        const num = Number(value);
+        if (Number.isNaN(num)) return fallback;
+        return Math.round(num);
+      }
+
       function displayResults(current, history, prediction) {
         const results = document.getElementById("results");
         results.style.display = "block";
 
         // Current AQI Section
         const aqiClass = getAQIClass(current.aqi);
+        const displayPm25 = formatInt(current.pm25);
+        const displayPm10 = formatInt(current.pm10);
+        const displayO3 = formatNumber(current.o3, 1);
+        const displayNo2 = formatNumber(current.no2, 1);
+        const displayCo = formatNumber(current.co, 1);
+        const displayTemp =
+          current.temperature != null
+            ? `${formatNumber(current.temperature, 1)}°C`
+            : "";
+        const displayHumidity =
+          current.humidity != null
+            ? `${formatNumber(current.humidity, 0)}%`
+            : "";
+        const displayWind =
+          current.wind != null ? `${formatNumber(current.wind, 1)} m/s` : "";
         const currentHTML = `
                 <div class="current-aqi ${aqiClass}">
                     <h2>📍 ${current.city}</h2>
@@ -404,30 +554,30 @@
                     <div class="metrics-grid">
                         <div class="metric-card">
                             <div class="metric-label">PM2.5</div>
-                            <div class="metric-value">${current.pm25}</div>
+                            <div class="metric-value">${displayPm25}</div>
                         </div>
                         <div class="metric-card">
                             <div class="metric-label">PM10</div>
-                            <div class="metric-value">${current.pm10}</div>
+                            <div class="metric-value">${displayPm10}</div>
                         </div>
                         <div class="metric-card">
                             <div class="metric-label">O₃</div>
-                            <div class="metric-value">${current.o3}</div>
+                            <div class="metric-value">${displayO3}</div>
                         </div>
                         <div class="metric-card">
                             <div class="metric-label">NO₂</div>
-                            <div class="metric-value">${current.no2}</div>
+                            <div class="metric-value">${displayNo2}</div>
                         </div>
                         <div class="metric-card">
                             <div class="metric-label">CO</div>
-                            <div class="metric-value">${current.co}</div>
+                            <div class="metric-value">${displayCo}</div>
                         </div>
                         ${
                           current.temperature
                             ? `
                         <div class="metric-card">
                             <div class="metric-label">Temperature</div>
-                            <div class="metric-value">${current.temperature}°C</div>
+                            <div class="metric-value">${displayTemp}</div>
                         </div>
                         `
                             : ""
@@ -437,7 +587,7 @@
                             ? `
                         <div class="metric-card">
                             <div class="metric-label">Humidity</div>
-                            <div class="metric-value">${current.humidity}%</div>
+                            <div class="metric-value">${displayHumidity}</div>
                         </div>
                         `
                             : ""
@@ -447,7 +597,7 @@
                             ? `
                         <div class="metric-card">
                             <div class="metric-label">Wind</div>
-                            <div class="metric-value">${current.wind} m/s</div>
+                            <div class="metric-value">${displayWind}</div>
                         </div>
                         `
                             : ""
