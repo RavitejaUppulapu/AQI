@@ -22,19 +22,27 @@ class AQIPredictor:
         Initialize predictor
         
         Args:
-            model_type: "linear" or "random_forest"
+            model_type: "linear", "random_forest" or "auto"
         """
+        # model_type describes the *strategy* to use.
+        # When set to "auto", the predictor will train multiple models
+        # (LinearRegression and RandomForest) and automatically select
+        # the one with the best metrics (primarily highest R², then lowest MAE).
         self.model_type = model_type
-        if model_type == "linear":
-            self.model = LinearRegression()
-        else:
-            self.model = RandomForestRegressor(
-                n_estimators=100,
-                max_depth=10,
-                min_samples_split=2,
-                random_state=42,
-                n_jobs=-1
-            )
+
+        # Keep separate instances for linear and random forest models
+        self.linear_model = LinearRegression()
+        self.random_forest_model = RandomForestRegressor(
+            n_estimators=100,
+            max_depth=10,
+            min_samples_split=2,
+            random_state=42,
+            n_jobs=-1
+        )
+
+        # This will point to the *selected* model after training
+        self.model = self.linear_model
+        self.selected_model_type = model_type
         self.is_trained = False
         self.feature_names = []
         self.training_metrics = {}
@@ -126,21 +134,66 @@ class AQIPredictor:
             if len(X) == 0 or len(y) == 0:
                 logger.error("Empty feature or target arrays")
                 return False
-            
-            # Train model
-            self.model.fit(X, y)
-            
-            # Calculate training metrics
-            y_pred = self.model.predict(X)
-            self.training_metrics = {
-                "r2_score": float(r2_score(y, y_pred)),
-                "mae": float(mean_absolute_error(y, y_pred)),
-                "rmse": float(np.sqrt(mean_squared_error(y, y_pred))),
-                "training_samples": len(y)
-            }
-            
+
+            def _fit_and_score(model, name: str):
+                """Train a single model and compute metrics."""
+                model.fit(X, y)
+                y_pred = model.predict(X)
+                metrics = {
+                    "r2_score": float(r2_score(y, y_pred)),
+                    "mae": float(mean_absolute_error(y, y_pred)),
+                    "rmse": float(np.sqrt(mean_squared_error(y, y_pred))),
+                    "training_samples": len(y),
+                    "model_name": name,
+                }
+                return metrics
+
+            if self.model_type in ("linear", "random_forest"):
+                # Single-model path (backwards compatible)
+                if self.model_type == "linear":
+                    self.model = self.linear_model
+                else:
+                    self.model = self.random_forest_model
+
+                metrics = _fit_and_score(self.model, self.model_type)
+                self.training_metrics = metrics
+                self.selected_model_type = self.model_type
+                self.is_trained = True
+                logger.info(
+                    "Model (%s) trained successfully. R²=%.3f",
+                    self.selected_model_type,
+                    self.training_metrics["r2_score"],
+                )
+                return True
+
+            # Auto model selection: train LinearRegression and RandomForest,
+            # then pick the best one based on R² (and MAE as a tiebreaker).
+            linear_metrics = _fit_and_score(self.linear_model, "linear")
+            rf_metrics = _fit_and_score(self.random_forest_model, "random_forest")
+
+            # Choose best model: higher R² is better; if close, prefer lower MAE
+            candidates = [linear_metrics, rf_metrics]
+            candidates_sorted = sorted(
+                candidates,
+                key=lambda m: (m["r2_score"], -m["mae"]),  # higher r2, lower mae
+                reverse=True,
+            )
+            best = candidates_sorted[0]
+
+            if best["model_name"] == "linear":
+                self.model = self.linear_model
+            else:
+                self.model = self.random_forest_model
+
+            self.training_metrics = best
+            self.selected_model_type = best["model_name"]
             self.is_trained = True
-            logger.info(f"Model trained successfully. R²={self.training_metrics['r2_score']:.3f}")
+            logger.info(
+                "Auto-selected '%s' model. R²=%.3f, MAE=%.3f",
+                self.selected_model_type,
+                self.training_metrics["r2_score"],
+                self.training_metrics["mae"],
+            )
             return True
             
         except Exception as e:
@@ -212,7 +265,8 @@ class AQIPredictor:
             return {
                 "prediction": predicted_aqi,
                 "confidence": confidence,
-                "metrics": self.training_metrics
+                "metrics": self.training_metrics,
+                "model_used": self.selected_model_type,
             }
             
         except Exception as e:
@@ -225,7 +279,7 @@ class AQIPredictor:
             os.makedirs(os.path.dirname(filepath) if os.path.dirname(filepath) else ".", exist_ok=True)
             joblib.dump({
                 "model": self.model,
-                "model_type": self.model_type,
+                "model_type": self.selected_model_type,
                 "is_trained": self.is_trained,
                 "feature_names": self.feature_names,
                 "training_metrics": self.training_metrics,
@@ -277,3 +331,80 @@ def get_health_message(aqi: float) -> str:
         return "Very Unhealthy"
     else:
         return "Hazardous"
+
+
+def backtest_history(history: List[Dict], model_type: str = "auto") -> Optional[Dict]:
+    """
+    Simple rolling-origin backtest over the provided history.
+
+    For each step i, train on history[:i] and predict AQI for day i,
+    then compare with the actual AQI at history[i].
+
+    Args:
+        history: List of dicts with at least 'aqi' and 'day'
+        model_type: 'linear', 'random_forest', or 'auto'
+
+    Returns:
+        Dictionary with aggregated backtest metrics or None if not enough data.
+    """
+    try:
+        if not history or len(history) < 5:
+            logger.warning("Not enough history for backtesting (need at least 5 days)")
+            return None
+
+        predictions = []
+        actuals = []
+
+        # Start from index 3 so we have at least 3 days to train on
+        for i in range(3, len(history)):
+            train_hist = history[:i]  # use first i days to predict day i
+            true_val = history[i].get("aqi", 0)
+
+            predictor = AQIPredictor(model_type=model_type)
+            if not predictor.train(train_hist):
+                continue
+
+            res = predictor.predict(train_hist)
+            if res is None:
+                continue
+
+            predictions.append(res["prediction"])
+            actuals.append(true_val)
+
+        if not predictions or not actuals:
+            logger.warning("Backtest did not produce any valid predictions")
+            return None
+
+        y_true = np.array(actuals)
+        y_pred = np.array(predictions)
+
+        metrics = {
+            "r2_score": float(r2_score(y_true, y_pred)),
+            "mae": float(mean_absolute_error(y_true, y_pred)),
+            "rmse": float(np.sqrt(mean_squared_error(y_true, y_pred))),
+            "samples": int(len(y_true)),
+        }
+
+        # Basic trend analysis based on backtest
+        if len(actuals) >= 2:
+            trend_change = (actuals[-1] - actuals[0]) / max(actuals[0], 1) * 100.0
+        else:
+            trend_change = 0.0
+
+        trend = "Stable"
+        if trend_change > 5:
+            trend = "Rising"
+        elif trend_change < -5:
+            trend = "Falling"
+
+        volatility = float(np.var(y_true))
+
+        return {
+            "metrics": metrics,
+            "trend": trend,
+            "trend_change_percent": float(trend_change),
+            "volatility": volatility,
+        }
+    except Exception as e:
+        logger.error(f"Error during backtesting: {e}", exc_info=True)
+        return None

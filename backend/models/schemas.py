@@ -2,7 +2,7 @@
 Pydantic models for request/response validation
 """
 from pydantic import BaseModel, Field, validator
-from typing import Optional, List
+from typing import Optional, List, Dict
 from datetime import datetime
 
 
@@ -120,6 +120,55 @@ class ErrorResponse(BaseModel):
     error: str
     detail: Optional[str] = None
     timestamp: str = Field(default_factory=lambda: datetime.now().isoformat())
+
+
+class ForecastEntry(BaseModel):
+    """Single forecast entry for a future day"""
+    day: str = Field(..., description="Date in YYYY-MM-DD format")
+    predicted_aqi: float = Field(..., ge=0, description="Predicted AQI value")
+    health_message: str = Field(..., description="Health category based on AQI")
+
+
+class ForecastResponse(BaseModel):
+    """Response model for multi-day forecast"""
+    city: str
+    forecast: List[ForecastEntry]
+    model_used: Optional[str] = Field(None, description="Model used for forecast")
+    base_date: Optional[str] = Field(None, description="Base date of forecast")
+
+
+class BacktestMetrics(BaseModel):
+    """Backtest performance metrics"""
+    r2_score: float
+    mae: float
+    rmse: float
+    samples: int
+
+
+class BacktestResponse(BaseModel):
+    """Response model for backtesting endpoint"""
+    city: str
+    metrics: BacktestMetrics
+    trend: str
+    trend_change_percent: float
+    volatility: float
+
+
+class AlertItem(BaseModel):
+    """Single alert item"""
+    type: str = Field(..., description="Alert type (e.g., 'current', 'forecast', 'sudden_change')")
+    level: str = Field(..., description="Level (e.g., 'info', 'warning', 'critical')")
+    message: str = Field(..., description="Human readable alert message")
+
+
+class AlertsResponse(BaseModel):
+    """Response model for alerts endpoint"""
+    city: str
+    current_aqi: int
+    predicted_aqi: float
+    risk_today: str
+    risk_tomorrow: str
+    alerts: List[AlertItem]
 
 
 

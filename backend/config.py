@@ -37,7 +37,8 @@ class Settings:
     LOG_LEVEL: str = os.getenv("LOG_LEVEL", "INFO")
     
     # ML Configuration
-    ML_MODEL_TYPE: str = os.getenv("ML_MODEL_TYPE", "linear")  # linear or random_forest
+    # linear | random_forest | auto (auto-select best model)
+    ML_MODEL_TYPE: str = os.getenv("ML_MODEL_TYPE", "auto")
     ML_MODEL_SAVE_PATH: str = os.getenv("ML_MODEL_SAVE_PATH", "backend/ml/models/")
 
 settings = Settings()
